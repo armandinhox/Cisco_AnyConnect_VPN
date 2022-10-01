@@ -1,0 +1,469 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<!--
+*************************************************************************
+**           Copyright (c) 2015, Cisco Systems, All Rights Reserved
+*************************************************************************
+-->
+<head>
+<title>Cisco AnyConnect Secure Mobility Client Install Selector</title>
+<meta http-equiv="MSThemeCompatible" content="Yes">
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<HTA:APPLICATION 
+     ID="installSelect" 
+     APPLICATIONNAME="AnyConnect Installer"
+     SCROLL="yes"
+     SINGLEINSTANCE="yes"
+     SELECTION="no"
+     ICON="Setup\GUI.ico">
+<script type="text/vbscript">
+    'Window_OnLoad
+    Window.ResizeTo 650, 670
+    Window.moveto 0, 0
+
+    Dim WshShell, objFSO, strVer, strTemp, Return, strReturn
+    Dim bNeedsReboot, valNeedsReboot, valNumChecked
+    Dim strLockDown, dblQuote
+    
+    strLockDown = ""
+    dblQuote  = chr(34)
+    valNeedsReboot = 3010
+
+    Set WshShell = CreateObject("WScript.Shell")
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+
+    Dim strScriptDir
+    strScriptDir = objFSO.GetParentFolderName(replace(installSelect.commandLine, dblQuote, ""))
+
+    Sub Initialize
+        Dim strVerFile
+        strVerFile = strScriptDir & "\Setup\update.txt"
+        If objFSO.FileExists(strVerFile) Then
+            Set objTextFile = objFSO.OpenTextFile(strVerFile, 1)
+            strVer = objTextFile.ReadAll
+            objTextFile.Close
+            strVer = Replace (strVer, ",", ".")
+            strVer = Replace (strVer, vbNewLine, "")
+        End If
+
+        If Not IsEmpty(strVer) Then
+            Version.InnerText = strVer
+        Else
+            Body.InnerHTML = "<p style='text-align:center'>Unable to determine AnyConnect package version (missing update.txt).</p>"
+        End If
+
+        strTemp = objFSO.GetSpecialFolder(TemporaryFolder)
+        strTemp = strTemp & "\Temp\"
+    End Sub
+
+    ' Main Subroutine
+    Sub TestCheckboxes
+        valNumChecked = 0
+        strSelected = vbCrLf
+        If CheckboxVPN.Checked Then
+            strSelected = strSelected & "AnyConnect VPN" & vbCrLf
+            blnInstallVPN = true
+            valNumChecked = valNumChecked + 1
+        End If
+        If CheckboxSBL.Checked Then
+            strSelected = strSelected & "AnyConnect Start Before Login" & vbCrLf
+            blnInstallSBL = true
+            valNumChecked = valNumChecked + 1
+        End If
+        If CheckboxDART.Checked Then
+            strSelected = strSelected & "AnyConnect Diagnostic And Reporting Tool" & vbCrLf
+            blnInstallDART = true
+            valNumChecked = valNumChecked + 1
+        End If
+        If CheckboxPosture.Checked Then
+            strSelected = strSelected & "AnyConnect Posture" & vbCrLf
+            blnInstallPosture = true
+            valNumChecked = valNumChecked + 1
+        End If
+        If CheckboxISEPosture.Checked Then
+            If blnInstallVPN Then
+                strSelected = strSelected & "AnyConnect ISE Posture" & vbCrLf
+                blnInstallISEPosture = true
+                valNumChecked = valNumChecked + 1
+            Else
+                strSelected = strSelected & "Stand-Alone AnyConnect ISE Posture" & vbCrLf
+                blnInstallISEPostureAlone = true
+                valNumChecked = valNumChecked + 1
+            End If
+        End If
+        If CheckboxFireAMP.Checked Then
+            strSelected = strSelected & "AnyConnect AMP Enabler Module" & vbCrLf
+            blnInstallAMPEnabler = true
+            valNumChecked = valNumChecked + 1
+        End If
+        If CheckboxNVM.Checked Then
+            strSelected = strSelected & "AnyConnect Network Visibility Module" & vbCrLf
+            blnInstallNVM = true
+            valNumChecked = valNumChecked + 1
+        End If
+        If CheckboxNAM.Checked Then
+            If blnInstallVPN Then
+                strSelected = strSelected & "AnyConnect Network Access Manager" & vbCrLf
+                blnInstallNAM = true
+                valNumChecked = valNumChecked + 1
+            Else
+                strSelected = strSelected & "Stand-Alone AnyConnect Network Access Manager" & vbCrLf
+                blnInstallNAMAlone = true
+                valNumChecked = valNumChecked + 1
+            End If
+        End If
+        If CheckboxUmbrella.Checked Then
+            If blnInstallVPN Then
+                strSelected = strSelected & "AnyConnect Umbrella Roaming Security" & vbCrLf
+                blnInstallUmbrella = true
+                valNumChecked = valNumChecked + 1
+            Else
+                strSelected = strSelected & "Stand-Alone AnyConnect Umbrella Roaming Security" & vbCrLf
+                blnInstallUmbrellaAlone = true
+                valNumChecked = valNumChecked + 1
+            End If
+        End If
+        If valNumChecked > 0 Then
+            blnAnswer = window.confirm( "You selected the following AnyConnect " & strVer & " modules to install: " & vbCrLf & strSelected & vbCrLf & "Do you wish to install these now?")
+            If Not blnAnswer Then
+                Exit Sub
+            End If
+           
+            blnAcceptedEULA = window.showModalDialog("Setup/eula_dialog.html","","dialogwidth=650px;dialogheight=450px;status:no")
+            If blnAcceptedEULA Then
+                If blnInstallVPN Then
+                    InstallVPN
+                End If
+                If blnInstallDART Then
+                    InstallDART
+                End If
+                If blnInstallNAM Then
+                    InstallNAM
+                End If
+                If blnInstallPosture Then
+                    InstallPosture
+                End If
+                If blnInstallISEPosture Then
+                    InstallISEPosture
+                End If
+                If blnInstallAMPEnabler Then
+                    InstallAMPEnabler
+                End If
+                If blnInstallNVM Then
+                    InstallNVM
+                End If
+                If blnInstallUmbrella Then
+                    InstallUmbrella
+                End If
+                If blnInstallNAMAlone Then
+                    InstallAnyConnectDisableVPN
+                    InstallNAM
+                End If
+                If blnInstallUmbrellaAlone Then
+                    InstallAnyConnectDisableVPN
+                    InstallUmbrella
+                End If
+                If blnInstallISEPostureAlone Then
+                    InstallAnyConnectDisableVPN
+                    InstallISEPosture
+                End If
+                If blnInstallSBL Then
+                    InstallSBL
+                End If
+
+                If bNeedsReboot Then
+                    Msgbox "You must reboot your system for the installed changes to take effect.", vbOKOnly, "Cisco AnyConnect Secure Mobility Client Install Selector"
+                Else
+                    Msgbox "Installation complete.", vbOKOnly, "Cisco AnyConnect Secure Mobility Client Install Selector"
+                End If
+
+                ExitHTA
+            End If
+        End If
+    End Sub
+
+    ' Checkbox Dependencies Subroutines
+    Sub CheckAll
+        CheckboxVPN.Checked = CheckboxALL.Checked
+        CheckboxSBL.Checked = CheckboxALL.Checked
+        CheckboxNAM.Checked = CheckboxALL.Checked
+        CheckboxPosture.Checked = CheckboxALL.Checked
+        CheckboxISEPosture.Checked = CheckboxALL.Checked
+        CheckboxFireAMP.Checked = CheckboxALL.Checked
+        CheckboxNVM.Checked = CheckboxALL.Checked
+        CheckboxUmbrella.Checked = CheckboxALL.Checked
+    End Sub
+
+    Sub CheckDependsVPN
+        CheckSBLChecked
+        If CheckboxVPN.Checked=False Then
+            CheckboxPosture.Checked = False
+            CheckboxISEPosture.Checked = False
+            CheckboxFireAMP.Checked = False
+            CheckboxNVM.Checked = False
+            CheckboxAll.Checked = False
+        End If
+    End Sub
+    
+    Sub CheckSBLDependsOnSBLClick
+        If CheckboxSBL.Checked Then
+            CheckboxVPN.Checked = True
+        End If
+    End Sub
+
+    Sub CheckSBLChecked
+        If CheckboxVPN.Checked=False And CheckboxNAM.Checked=False Then
+            CheckboxSBL.checked=False
+        End If
+    End Sub
+    
+    Sub CheckDependsNAM
+        CheckSBLChecked
+        If CheckboxNAM.Checked=False Then
+            CheckboxAll.Checked = False
+        End If
+    End Sub
+
+    Sub CheckPostureDepends
+        If CheckboxPosture.Checked Then
+            CheckboxVPN.Checked = True
+        End If
+        If CheckboxPosture.Checked=False Then
+            CheckboxALL.Checked = False
+        End If
+    End Sub
+ 
+    Sub CheckFireAMPDepends
+        If CheckboxFireAMP.Checked Then
+            CheckboxVPN.Checked = True
+        End If
+        If CheckboxFireAMP.Checked=False Then
+            CheckboxALL.Checked = False
+        End If
+    End Sub
+
+    Sub CheckNVMDepends
+        If CheckboxNVM.Checked Then
+            CheckboxVPN.Checked = True
+        End If
+        If CheckboxNVM.Checked=False Then
+            CheckboxALL.Checked = False
+        End If
+    End Sub
+ 
+    Sub CheckALLFalse
+        If CheckboxNAM.Checked=False or CheckboxISEPosture.Checked=False  or CheckboxFireAMP.Checked=False or CheckboxNVM.Checked=False or CheckboxUmbrella.Checked=False Then
+            CheckboxALL.Checked = False
+        End If
+    End Sub
+    
+    Sub SetLockDownFlag
+        If CheckboxLOCKDOWN.Checked Then
+            strLockDown = "LOCKDOWN=1"
+        Else
+            strLockDown = ""
+        End If
+    End Sub
+   
+    ' Install Subroutines
+    Function GetDateTimeString()
+        strDateTime = FormatDateTime(Time(),4)
+        strDateTime = Replace (strDateTime, ":", "")
+        strDateTime = strDateTime & Date()
+        GetDateTimeString = Replace (strDateTime, "/", "")
+    End Function
+
+    Sub InstallVPN
+        strInstallFile = "anyconnect-win-" & strVer & "-core-vpn-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive PRE_DEPLOY_DISABLE_VPN=0 " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallSBL
+        strInstallFile = "anyconnect-win-" & strVer & "-gina-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallDART
+        strInstallFile = "anyconnect-win-" & strVer & "-dart-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallNAM
+        strInstallFile = "anyconnect-win-" & strVer & "-nam-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallUmbrella
+        strInstallFile = "anyconnect-win-" & strVer & "-umbrella-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallAnyConnectDisableVPN
+        strInstallFile = "anyconnect-win-" & strVer & "-core-vpn-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive PRE_DEPLOY_DISABLE_VPN=1 " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+        
+    Sub InstallPosture
+        strInstallFile = "anyconnect-win-" & strVer & "-posture-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallISEPosture
+        strInstallFile = "anyconnect-win-" & strVer & "-iseposture-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallAMPEnabler
+        strInstallFile = "anyconnect-win-" & strVer & "-amp-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub InstallNVM
+        strInstallFile = "anyconnect-win-" & strVer & "-nvm-predeploy-k9"
+        strLogFile = strInstallFile & "-install-" & GetDateTimeString & ".log"
+        strInstallFile = strInstallFile & ".msi"
+        strMsiexecCmdLine = "msiexec /package " & dblQuote & strScriptDir & "\" & strInstallFile & dblQuote & " /norestart /passive " & strLockDown & " /lvx* " & strTemp & strLogFile
+        Return = WshShell.Run(strMsiexecCmdLine,1,True)
+        If Return=valNeedsReboot Then
+            bNeedsReboot=True
+        End If
+    End Sub
+
+    Sub ExitHTA
+        self.close()
+    End Sub
+</script>
+</head>
+<style>
+p  {
+    margin: 8px;
+}
+</style>
+<body id="body" style="background-image=url('Setup/cues_bg.jpg');font-family:'Times New Roman',serif;font-size:24;color=white" onload="Initialize">
+Select the AnyConnect <span id="version">0.0.0</span> modules you wish to install:
+<p>
+<span class="tooltip" title="Installs the module that enables VPN capabilities.">
+<input type="checkbox" id="vpn" name="CheckboxVPN" checked onclick="CheckDependsVPN">
+<label for="vpn">Core & VPN</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the module that allows a VPN session and/or network logon to be established prior to a user logging onto the system.">
+<input type="checkbox" id="sbl" name="CheckboxSBL" checked onclick="CheckSBLDependsOnSBLClick">
+<label for="sbl">Start Before Login</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the module that provides Layer 2 device management and authentication for access to both wired and wireless networks.">
+<input type="checkbox" id="nam" name="CheckboxNAM" checked onClick="CheckDependsNAM">
+<label for="nam">Network Access Manager</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the module that provides the AnyConnect Secure Mobility Client with the ability to identify the operating system, antivirus, antispyware, and firewall software installed on the host prior to creating a remote access connection to the secure gateway.">
+<input type="checkbox" id="posture" name="CheckboxPosture" checked onclick="CheckPostureDepends">
+<label for="posture">VPN Posture (Hostscan)</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the AMP Enabler module that downloads and deploys AMP for Endpoints, as configured by the administrator.">
+<input type="checkbox" id="fireamp" name="CheckboxFireAMP" checked onclick="CheckFireAMPDepends">
+<label for="ampenabler">AMP Enabler</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the Network Visibility module which collects application telemetry data.">
+<input type="checkbox" id="NVM" name="CheckboxNVM" checked onclick="CheckNVMDepends">
+<label for="NVM">Network Visibility Module</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the module that enables Umbrella Roaming Security.">
+<input type="checkbox" id="umbrella" name="CheckboxUmbrella" checked onclick="CheckAllFalse">
+<label for="umbrella">Umbrella Roaming Security</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the module that provides the AnyConnect Secure Mobility Client with the functionality needed to authenticate to wired or wireless networks controlled by the Identity Services Engine, including examination and any needed remediation of the connecting host environment.">
+<input type="checkbox" id="iseposture" name="CheckboxISEPosture" checked onclick="CheckAllFalse">
+<label for="iseposture">ISE Posture</label>
+</span>
+</p>
+<p>
+<span class="tooltip" title="Installs the entire suite of AnyConnect Secure Mobility software components.">
+<input type="checkbox" id="all" name="CheckboxALL" checked onClick="CheckAll">
+<label for="all">Select All</label>
+</span>
+</p>
+<p style="margin-top:28px">
+<span class="tooltip" title="Installs the diagnostics module that collects AnyConnect Secure Mobility Client troubleshooting information.">
+<input type="checkbox" id="dart" name="CheckboxDART" checked>
+<label for="dart">Diagnostic And Reporting Tool</label>
+</span>
+</p>
+<br>
+<p style="text-align:right">
+<span class="tooltip" title="Locks down the permissions of the Windows Services for each module that is installed. This will prevent any user from stopping the service, including local administrators.">
+<input type="checkbox" id="lockdown" name="CheckboxLOCKDOWN" onclick="SetLockDownFlag">
+<label for="lockdown">Lock Down Component Services</label>
+</span>
+</p>
+<p>
+<input type="submit" value="Install Selected" id="run_button" style="font-size:20;" onClick="TestCheckboxes">
+</p>
+</body>
+</html>

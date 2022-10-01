@@ -1,0 +1,12 @@
+<AnyConnectProfile xmlns="http://schemas.xmlsoap.org/endoding/">;
+	<ServerList>
+		<HostEntry> 
+			<Hostname>VPN V.tal</HostName>
+			<HostAddress>VPN2 ADRESS</HostAddress>
+		</HostEntry>
+		<HostEntry> 
+			<Hostname>VPN Oi</HostName>
+			<HostAddress>VPN3 ADRESS</HostAddress>
+		</HostEntry>
+	</ServerList>
+</AnyConnectProfile>
